@@ -1,46 +1,42 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs'); // Para criptografar as senhas
 
+// Definição do schema do usuário
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
+    required: [true, 'O nome é obrigatório.'], // Mensagem clara para validação
+    trim: true, // Remover espaços em branco no início/fim
   },
   email: {
     type: String,
-    required: true,
-    unique: true, // Garantir que o email seja único
-    lowercase: true, // Tornar o email sempre em minúsculas para evitar duplicação de registros com o mesmo email em maiúsculas e minúsculas
-    trim: true, // Remover espaços em branco antes e depois do email
+    required: [true, 'O email é obrigatório.'], // Mensagem clara para validação
+    unique: true, // Garantir unicidade do email
+    lowercase: true, // Sempre armazenar o email em letras minúsculas
+    trim: true, // Remover espaços em branco no início/fim
+    match: [
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/, // Regex para validação do formato do email
+      'Por favor, insira um email válido.', // Mensagem para email inválido
+    ],
   },
   password: {
     type: String,
-    required: true,
+    required: [true, 'A senha é obrigatória.'], // Mensagem clara para validação
+    minlength: [6, 'A senha deve ter pelo menos 6 caracteres.'], // Requisito mínimo para a senha
   },
+}, {
+  timestamps: true, // Adiciona campos `createdAt` e `updatedAt` automaticamente
 });
 
-// Criptografar a senha antes de salvar o usuário
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
+// Remover o middleware de criptografia de senha
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error); // Passar o erro para o próximo middleware de erro
-  }
-});
-
-// Comparar as senhas (no caso de login)
+// Remover o método de comparação de senha (sem criptografia)
 UserSchema.methods.comparePassword = async function (password) {
   try {
-    return await bcrypt.compare(password, this.password);
+    return password === this.password; // Comparar diretamente as senhas
   } catch (error) {
-    throw new Error('Erro ao comparar as senhas');
+    throw new Error('Erro ao comparar a senha.'); // Lança um erro em caso de falha
   }
 };
 
+// Exporta o modelo do usuário
 module.exports = mongoose.model('User', UserSchema, 'users');
